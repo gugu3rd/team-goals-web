@@ -107,7 +107,7 @@ function render(){
   </div>`
   bindEvents()
 }
-function profilePopup(){return `<div class="profile-pop"><strong>${esc(state.me.full_name||'')}</strong><div>${esc(state.me.nickname||'')}</div><div class="muted">${esc(state.me.email||'')}</div><div class="muted">${state.me.is_admin?'관리자':'일반 사용자'}</div><hr style="border:0;border-top:1px solid var(--line);margin:12px 0"><button id="logoutBtn" class="btn btn-ghost btn-block">로그아웃</button></div>`}
+function profilePopup(){return `<div class="profile-pop"><strong>${esc(state.me.full_name||'')}</strong><div>${esc(state.me.nickname||'')}</div><div class="muted">${esc(state.me.email||'')}</div><div class="muted">${state.me.is_admin?'관리자':'일반 사용자'}</div><hr style="border:0;border-top:1px solid var(--line);margin:12px 0"><button id="changePasswordBtn" class="btn btn-ghost btn-block">비밀번호 변경</button><button id="logoutBtn" class="btn btn-ghost btn-block">로그아웃</button></div>`}
 
 function mainContent(){
  const mine=state.page==='mine';
@@ -123,21 +123,21 @@ function mainContent(){
  ${(!mine && state.view==='people')?peopleBoard():timelineView()}`
 }
 
-function todayLine(){
+function todayLine(showLabel=false){
   const now=new Date(); if(now<RANGE_START||now>RANGE_END) return ''
   const pct=Math.max(0,Math.min(100,((now-RANGE_START)/DAY_MS/TOTAL_DAYS)*100))
-  return `<span class="today-line" style="left:${pct}%"></span><span class="today-label" style="left:${pct}%">오늘</span>`
+  return `<span class="today-line" style="left:${pct}%"></span>${showLabel?`<span class="today-label" style="left:${pct}%">오늘</span>`:''}`
 }
 function timelineView(){
   const items=filteredItems(), pm=profileMap();
   const projects=state.projects.filter(p=>items.some(w=>w.project_id===p.id))
   return `<div class="timeline-card"><div class="timeline">
-    <div class="timeline-head"><div class="label-head">팀 일정 / 개인 업무</div><div class="month-head">${MONTHS.map(m=>`<div>${m}</div>`).join('')}</div></div>
+    <div class="timeline-head"><div class="label-head">팀 일정 / 개인 업무</div><div class="month-head">${MONTHS.map(m=>`<div>${m}</div>`).join('')}${todayLine(true)}</div></div>
     ${projects.map(p=>{
       const pItems=items.filter(w=>w.project_id===p.id), members=projectMembers(p.id), owners=members.filter(m=>m.role==='owner').map(m=>m.profile?.nickname||m.profile?.full_name).filter(Boolean), dates=projectDates(p.id), expanded=state.expanded.has(p.id)
-      return `<div class="project-row"><div class="project-label"><span>${expanded?'▾':'▸'}</span><button data-project-toggle="${p.id}">${esc(p.name)}</button><div class="project-meta">${pItems.length}개 업무 · ${new Set(pItems.map(x=>x.assignee_id)).size}명${owners.length?` · ${esc(owners.join(', '))} 오너`:''}</div></div><div class="timeline-cell project-cell">${todayLine()}${dates.start?`<span class="bar project" style="${rangeStyle(dates.start,dates.end)}"></span>`:`<span class="no-date">일정 미정</span>`}</div></div>
+      return `<div class="project-row"><div class="project-label"><span>${expanded?'▾':'▸'}</span><button data-project-toggle="${p.id}">${esc(p.name)}</button><div class="project-meta">${pItems.length}개 업무 · ${new Set(pItems.map(x=>x.assignee_id)).size}명${owners.length?` · ${esc(owners.join(', '))} 오너`:''}</div></div><div class="timeline-cell project-cell">${todayLine(false)}${dates.start?`<span class="bar project" style="${rangeStyle(dates.start,dates.end)}"></span>`:`<span class="no-date">일정 미정</span>`}</div></div>
       ${expanded?projectOverview(p,members,dates):''}
-      ${pItems.map(w=>{const person=pm[w.assignee_id],role=memberRole(p.id,w.assignee_id)||'participant';return `<div class="work-row ${state.selectedWorkId===w.id?'selected':''}"><div class="work-label" data-work="${w.id}"><div class="work-icon">${esc((person?.nickname||'?').slice(0,1))}</div><div><div class="work-title">${esc(w.title)} ${isNew(w)?'<span class="badge new">NEW</span>':''}</div><div class="work-sub">${esc(person?.nickname||person?.full_name||'')} · ${role==='owner'?'오너':'참여자'} · ${fmtDate(w.start_date)}${w.end_date?`–${fmtDate(w.end_date)}`:''} · <span class="badge status-${w.status}">${w.status}</span></div></div></div><div class="timeline-cell" data-work="${w.id}">${todayLine()}${w.start_date&&w.end_date?`<span class="bar ${role==='owner'?'owner':'participant'} ${w.status==='완료'?'completed':''}" style="${rangeStyle(w.start_date,w.end_date)}">${esc(person?.nickname||'')}</span>`:`<span class="no-date">일정 미정</span>`}</div></div>`}).join('')}`
+      ${pItems.map(w=>{const person=pm[w.assignee_id],role=memberRole(p.id,w.assignee_id)||'participant';return `<div class="work-row ${state.selectedWorkId===w.id?'selected':''}"><div class="work-label" data-work="${w.id}"><div class="work-icon">${esc((person?.nickname||'?').slice(0,1))}</div><div><div class="work-title">${esc(w.title)} ${isNew(w)?'<span class="badge new">NEW</span>':''}</div><div class="work-sub">${esc(person?.nickname||person?.full_name||'')} · ${role==='owner'?'오너':'참여자'} · ${fmtDate(w.start_date)}${w.end_date?`–${fmtDate(w.end_date)}`:''} · <span class="badge status-${w.status}">${w.status}</span></div></div></div><div class="timeline-cell" data-work="${w.id}">${todayLine(false)}${w.start_date&&w.end_date?`<span class="bar ${role==='owner'?'owner':'participant'} ${w.status==='완료'?'completed':''}" style="${rangeStyle(w.start_date,w.end_date)}">${esc(person?.nickname||'')}</span>`:`<span class="no-date">일정 미정</span>`}</div></div>`}).join('')}`
     }).join('')}
   </div></div>`
 }
@@ -168,7 +168,11 @@ function editForm(w){return `<div class="edit-form"><div class="field"><label>�
 function modalMarkup(){
  if(state.modal?.type==='project') return projectModal(state.modal.projectId)
  if(state.modal?.type==='work') return workModal(state.modal.projectId,state.modal.selfOnly)
+ if(state.modal?.type==='password') return passwordModal()
  return ''
+}
+function passwordModal(){
+ return `<div class="modal-backdrop"><div class="modal password-modal"><div class="modal-head"><div><h2>비밀번호 변경</h2><p class="modal-subtitle">새 비밀번호를 입력하세요.</p></div><button id="modalClose" class="icon-btn">×</button></div><form id="passwordForm"><div class="field"><label>새 비밀번호</label><input id="newPassword" type="password" minlength="8" autocomplete="new-password" required placeholder="8자 이상"></div><div class="field"><label>새 비밀번호 확인</label><input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" required></div><div id="passwordError" class="error" style="display:none"></div><div class="form-actions"><button type="button" id="modalCancel" class="btn">취소</button><button type="submit" class="btn btn-primary">변경</button></div></form></div></div>`
 }
 function projectModal(projectId){
  const editing=!!projectId, p=state.projects.find(x=>x.id===projectId), mem=projectId?projectMembers(projectId):[]
@@ -183,7 +187,7 @@ function workModal(projectId,selfOnly=false){
 function bindEvents(){
  document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{state.page=b.dataset.page;state.selectedWorkId=null;state.editing=false;if(state.page==='mine')state.view='timeline';render()})
  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.selectedWorkId=null;render()})
- byId('profileTrigger')?.addEventListener('click',()=>{state.profileOpen=!state.profileOpen;render()}); byId('logoutBtn')?.addEventListener('click',()=>supabase.auth.signOut())
+ byId('profileTrigger')?.addEventListener('click',()=>{state.profileOpen=!state.profileOpen;render()}); byId('changePasswordBtn')?.addEventListener('click',()=>{state.profileOpen=false;state.modal={type:'password'};render()}); byId('logoutBtn')?.addEventListener('click',()=>supabase.auth.signOut())
  byId('searchInput')?.addEventListener('input',e=>{state.query=e.target.value;render();requestAnimationFrame(()=>{const i=byId('searchInput');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}})}); byId('assigneeFilter')?.addEventListener('change',e=>{state.assignee=e.target.value;render()}); byId('statusFilter')?.addEventListener('change',e=>{state.status=e.target.value;render()}); byId('projectFilter')?.addEventListener('change',e=>{state.project=e.target.value;render()})
  document.querySelectorAll('[data-project-toggle]').forEach(b=>b.onclick=()=>{const id=b.dataset.projectToggle;state.expanded.has(id)?state.expanded.delete(id):state.expanded.add(id);render()})
  document.querySelectorAll('[data-work]').forEach(el=>el.onclick=()=>{state.selectedWorkId=el.dataset.work;state.editing=false;render()})
@@ -192,9 +196,20 @@ function bindEvents(){
  document.querySelectorAll('[data-edit-project]').forEach(b=>b.onclick=()=>{state.modal={type:'project',projectId:b.dataset.editProject};render()})
  document.querySelectorAll('[data-add-work]').forEach(b=>b.onclick=()=>{state.modal={type:'work',projectId:b.dataset.addWork,selfOnly:false};render()})
  document.querySelectorAll('[data-add-self]').forEach(b=>b.onclick=()=>{state.modal={type:'work',projectId:b.dataset.addSelf,selfOnly:true};render()})
- byId('modalClose')?.addEventListener('click',closeModal); byId('modalCancel')?.addEventListener('click',closeModal); byId('projectForm')?.addEventListener('submit',saveProject); byId('workForm')?.addEventListener('submit',saveNewWork); byId('deleteProjectBtn')?.addEventListener('click',deleteProject)
+ byId('modalClose')?.addEventListener('click',closeModal); byId('modalCancel')?.addEventListener('click',closeModal); byId('projectForm')?.addEventListener('submit',saveProject); byId('workForm')?.addEventListener('submit',saveNewWork); byId('passwordForm')?.addEventListener('submit',changePassword); byId('deleteProjectBtn')?.addEventListener('click',deleteProject)
 }
 function closeModal(){state.modal=null;render()}
+async function changePassword(e){
+ e.preventDefault();
+ const password=byId('newPassword').value, confirmPassword=byId('confirmPassword').value, errorEl=byId('passwordError')
+ const showError=(msg)=>{errorEl.textContent=msg;errorEl.style.display='block'}
+ if(password.length<8)return showError('비밀번호는 8자 이상으로 입력해주세요.')
+ if(password!==confirmPassword)return showError('새 비밀번호가 서로 일치하지 않습니다.')
+ const submit=e.submitter; if(submit){submit.disabled=true;submit.textContent='변경 중...'}
+ const {error}=await supabase.auth.updateUser({password})
+ if(error){if(submit){submit.disabled=false;submit.textContent='변경'};return showError(error.message)}
+ state.modal=null; render(); alert('비밀번호가 변경되었습니다.')
+}
 async function saveWork(){
  const w=state.workItems.find(x=>x.id===state.selectedWorkId); const payload={title:byId('editTitle').value.trim(),start_date:byId('editStart').value||null,end_date:byId('editEnd').value||null,status:byId('editStatus').value,customer_target:byId('edit_customer_target').value.trim()||null,customer_need:byId('edit_customer_need').value.trim()||null,expected_effect:byId('edit_expected_effect').value.trim()||null,details:byId('edit_details').value.trim()||null}
  const {error}=await supabase.from('work_items').update(payload).eq('id',w.id); if(error)return alert(error.message); await loadData();state.editing=false;render()
